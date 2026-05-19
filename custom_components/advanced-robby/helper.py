@@ -28,7 +28,7 @@ def decode_schedule(payload: str):
 
         day, sh, sm, eh, em = chunk
 
-        if sh == 0x88:
+        if sh == 0x88 or sh == 0x00:
             continue
 
         events.append({
