@@ -48,11 +48,12 @@ class RobbyScheduleCalendar(CalendarEntity):
             f"robby_schedule_{mower_entity}"
         )
         self._attr_name = "Robby tijdschema"
-        
+
         self._mower_entity = mower_entity
         self._button_entity = button_entity
         self._button_available = False
         self._events_cache = []
+        self._ha_has_started = False
 
     async def async_added_to_hass(self):
         """Register callbacks."""
@@ -62,6 +63,8 @@ class RobbyScheduleCalendar(CalendarEntity):
             event: Event[EventStateChangedData] | None = None,
         ) -> None:
             """Triggered whenever mower entity updates."""
+            if not self._ha_has_started:
+                return
 
             if self._button_available and event and event.data.get("entity_id") == self._button_entity:
                 return
@@ -112,6 +115,7 @@ class RobbyScheduleCalendar(CalendarEntity):
 
         @callback
         async def async_on_ha_started(event):
+            self._ha_has_started = True
             await async_state_changed_listener()
 
         if self.hass.is_running:

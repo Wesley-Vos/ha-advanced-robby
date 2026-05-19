@@ -4,7 +4,6 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
-
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -38,9 +37,7 @@ class RobbyChargingBinarySensorEntity(BinarySensorEntity):
         self.hass = hass
         self._mower_entity = entry.data[CONF_MOWER_ENTITY]
         self._attr_has_entity_name = True
-        self._attr_unique_id = (
-            f"robby_charging_binary_sensor_{self._mower_entity}"
-        )
+        self._attr_unique_id = f"robby_charging_binary_sensor_{self._mower_entity}"
         self._attr_device_class = BinarySensorDeviceClass.BATTERY_CHARGING
         self.is_charging = False
 
