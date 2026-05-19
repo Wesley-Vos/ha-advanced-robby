@@ -1,0 +1,17 @@
+{
+  "domain": "advanced_robby",
+  "name": "Advanced Robby",
+  "codeowners": [
+    "@wesley-vos"
+  ],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://www.home-assistant.io/integrations/advanced_robby",
+  "homekit": {},
+  "iot_class": "calculated",
+  "quality_scale": "bronze",
+  "requirements": [],
+  "ssdp": [],
+  "zeroconf": [],
+  "version": "0.1.0"
+}

@@ -1,0 +1,135 @@
+import logging
+from typing import Optional
+
+from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
+from homeassistant.const import (
+    EVENT_HOMEASSISTANT_STARTED,
+        STATE_UNAVAILABLE,
+)
+from homeassistant.components.calendar import CalendarEntity, CalendarEvent
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_state_change_event
+
+from . import AdvancedRobbyConfigEntry
+from .const import (
+    CONF_MOWER_ENTITY,
+    CONF_QUERY_SCHEDULES_BUTTON_ENTITY,
+)
+from .device_binding import attach_entities_to_source_device
+from .helper import build_week, decode_schedule
+
+_LOGGER = logging.getLogger(__name__)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: AdvancedRobbyConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+):
+    
+    entities = [
+        RobbyScheduleCalendar(
+            hass,
+            entry.data[CONF_MOWER_ENTITY],
+            entry.data[CONF_QUERY_SCHEDULES_BUTTON_ENTITY],
+        )
+    ]
+
+    await attach_entities_to_source_device(entry, entities, hass, entry.data[CONF_MOWER_ENTITY])
+
+    async_add_entities(entities)
+
+
+class RobbyScheduleCalendar(CalendarEntity):
+
+    def __init__(self, hass, mower_entity, button_entity):
+        self.hass = hass
+        self._attr_unique_id = (
+            f"robby_schedule_{mower_entity}"
+        )
+        self._attr_name = "Robby tijdschema"
+        
+        self._mower_entity = mower_entity
+        self._button_entity = button_entity
+        self._button_available = False
+        self._events_cache = []
+
+    async def async_added_to_hass(self):
+        """Register callbacks."""
+
+        @callback
+        async def async_state_changed_listener(
+            event: Event[EventStateChangedData] | None = None,
+        ) -> None:
+            """Triggered whenever mower entity updates."""
+
+            if self._button_available and event and event.data.get("entity_id") == self._button_entity:
+                return
+            
+            if (
+                button_state := self.hass.states.get(self._button_entity)
+            ) is None or button_state.state == STATE_UNAVAILABLE:
+                self._attr_available = False
+                self._button_available = False
+                return
+            else:
+                self._button_available = True
+
+            if (
+                new_state := self.hass.states.get(self._mower_entity)
+            ) is None or new_state.state == STATE_UNAVAILABLE:
+                self._attr_available = False
+                return
+
+            payload = new_state.attributes.get("schedule")
+            
+            if not payload:
+                self._attr_available = False
+                
+                try:
+                    await self.hass.services.async_call(
+                        "button",
+                        "press",
+                        {"entity_id": self._button_entity},
+                        blocking=True,
+                    )
+                except Exception as e:
+                    _LOGGER.error("Button press failed: %s", e)
+                
+                return
+
+            decoded = decode_schedule(payload)
+            self._events_cache = build_week(decoded)
+
+            self._attr_available = True
+            self.async_write_ha_state()
+
+        self.async_on_remove(
+            async_track_state_change_event(
+                self.hass, [self._mower_entity, self._button_entity], async_state_changed_listener
+            )
+        )
+
+        @callback
+        async def async_on_ha_started(event):
+            await async_state_changed_listener()
+
+        if self.hass.is_running:
+            self.hass.async_create_task(async_on_ha_started(None))
+        else:
+            self.hass.bus.async_listen_once(
+                EVENT_HOMEASSISTANT_STARTED,
+                async_on_ha_started,
+            )
+
+    # -----------------------------------------------------
+    # Calendar API
+    # -----------------------------------------------------
+    async def async_get_events(self, hass, start_date, end_date):
+        return self._events_cache
+
+    @property
+    def event(self) -> Optional[CalendarEvent]:
+        if not self._events_cache:
+            return None
+        return self._events_cache[0]
