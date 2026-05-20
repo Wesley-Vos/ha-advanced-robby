@@ -64,7 +64,11 @@ class RobbyScheduleCalendar(CalendarEntity):
         ) -> None:
             """Triggered whenever mower entity updates."""
             if not self._ha_has_started:
+                _LOGGER.debug("Home Assistant hasn't started yet, waiting initialization")
                 return
+            
+            if event:
+                _LOGGER.debug(f"Receiving state change event for {event.data.get('entity_id')}, changing from {event.data.get("old_state")} to {event.data.get("new_state")}")
 
             if self._button_available and event and event.data.get("entity_id") == self._button_entity:
                 return
@@ -72,6 +76,7 @@ class RobbyScheduleCalendar(CalendarEntity):
             if (
                 button_state := self.hass.states.get(self._button_entity)
             ) is None or button_state.state == STATE_UNAVAILABLE:
+                _LOGGER.debug("Button entity is unavailable or not yet created")
                 self._attr_available = False
                 self._button_available = False
                 return
@@ -81,15 +86,16 @@ class RobbyScheduleCalendar(CalendarEntity):
             if (
                 new_state := self.hass.states.get(self._mower_entity)
             ) is None or new_state.state == STATE_UNAVAILABLE:
+                _LOGGER.debug("Mower entity is unavailable or not yet created")
                 self._attr_available = False
                 return
 
             payload = new_state.attributes.get("schedule")
             
             if not payload:
-                self._attr_available = False
-                
+                _LOGGER.debug("Schedule attribute is not (yet) present in mower entity attributes")
                 try:
+                    _LOGGER.debug("Pressing query schedule button")
                     await self.hass.services.async_call(
                         "button",
                         "press",
@@ -104,6 +110,7 @@ class RobbyScheduleCalendar(CalendarEntity):
             decoded = decode_schedule(payload)
             self._events_cache = build_week(decoded)
 
+            _LOGGER.debug("Schedule is decoded, calendar available")
             self._attr_available = True
             self.async_write_ha_state()
 
