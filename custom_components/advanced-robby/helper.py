@@ -1,6 +1,6 @@
 import base64
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from homeassistant.components.calendar import CalendarEvent
 from homeassistant.util import dt as dt_util
@@ -46,24 +46,50 @@ def build_week(decoded):
     now = dt_util.now()
     events = []
 
-    for e in decoded:
-        day = (e["day"] + 6) % 7
+    # Python weekday: Monday=0 ... Sunday=6, convert to Sunday=0 ... Saturday=6
+    current_day = (now.weekday() + 1) % 7
 
-        days_ahead = (day - now.weekday()) % 7
-        base = now + timedelta(days=days_ahead)
+    start_of_week = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=current_day)
 
-        sh, sm = e["start"]
-        eh, em = e["end"]
+    for event in decoded:
+        day_offset = event["day"]
 
-        start = base.replace(hour=sh, minute=sm, second=0, microsecond=0)
-        end = base.replace(hour=eh, minute=em, second=0, microsecond=0)
+        start_hour, start_minute = event["start"]
+        end_hour, end_minute = event["end"]
+
+        base_day = start_of_week + timedelta(days=day_offset)
+
+        start_dt = base_day.replace(
+            hour=start_hour,
+            minute=start_minute,
+            second=0,
+            microsecond=0
+        )
+
+        end_dt = base_day.replace(
+            hour=end_hour,
+            minute=end_minute,
+            second=0,
+            microsecond=0
+        )
+
+        # Overnight event
+        if end_dt <= start_dt:
+            end_dt += timedelta(days=1)
+
+        # Move past events forward by whole weeks
+        while end_dt < now:
+            start_dt += timedelta(days=7)
+            end_dt += timedelta(days=7)
 
         events.append(
             CalendarEvent(
                 summary=f"Maaien",
-                start=start,
-                end=end,
+                start=start_dt,
+                end=end_dt
             )
         )
+
+    events.sort(key=lambda x: x.start)
 
     return events
