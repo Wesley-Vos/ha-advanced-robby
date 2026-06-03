@@ -56,7 +56,7 @@ class RobbyChargingBinarySensorEntity(BinarySensorEntity):
                 self._attr_available = False
                 return
 
-            self.is_charging = new_state.attributes.get("raw_activity") == "CHARGING"
+            self.is_charging = new_state.attributes.get("raw_activity") in ("CHARGING", "CHARGING_WITH_TASK_SUSPEND")
 
             self._attr_available = True
             self.async_write_ha_state()
