@@ -1,0 +1,31 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "host": "[%key:common::config_flow::data::host%]",
+          "username": "[%key:common::config_flow::data::username%]",
+          "password": "[%key:common::config_flow::data::password%]"
+        }
+      }
+    },
+    "error": {
+      "unknown": "[%key:common::config_flow::error::unknown%]"
+    }
+  },
+  "entity": {
+    "lawn_mower":  {
+      "activity": {
+        "state": {
+          "charging": "Charging",
+          "standby": "Standby",
+          "locked": "Locked",
+          "returning": "[%key:component::lawn_mower::entity_component::_::state::returning%]", 
+          "mowing": "[%key:component::lawn_mower::entity_component::_::state::mowing%]",
+          "docked": "[%key:component::lawn_mower::entity_component::_::state::docked%]",
+          "error": "[%key:component::lawn_mower::entity_component::_::state::error%]"
+        }
+      }
+    }
+  }
+}

@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant
 _PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
     Platform.CALENDAR,
+    Platform.LAWN_MOWER
 ]
 
 type AdvancedRobbyConfigEntry = ConfigEntry  # noqa: F821

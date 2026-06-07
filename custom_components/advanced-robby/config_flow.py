@@ -8,18 +8,29 @@ import voluptuous as vol
 
 from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN
 from homeassistant.components.lawn_mower import DOMAIN as LAWN_MOWER_DOMAIN
+from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import selector
 
-from .const import CONF_MOWER_ENTITY, CONF_QUERY_SCHEDULES_BUTTON_ENTITY, DOMAIN
+from .const import CONF_CANCEL_BUTTON_ENTITY, CONF_CONTINUE_BUTTON_ENTITY, CONF_MOWER_ENTITY, CONF_QUERY_SCHEDULES_BUTTON_ENTITY, DOMAIN
 
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_MOWER_ENTITY): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain=[LAWN_MOWER_DOMAIN]),
+            selector.EntitySelectorConfig(domain=[LAWN_MOWER_DOMAIN, SENSOR_DOMAIN]),
         ),
+        vol.Required(CONF_CANCEL_BUTTON_ENTITY): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain=[BUTTON_DOMAIN]
+                )
+            ),
+        vol.Required(CONF_CONTINUE_BUTTON_ENTITY): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain=[BUTTON_DOMAIN]
+                )
+            ),
         vol.Required(CONF_QUERY_SCHEDULES_BUTTON_ENTITY): selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     domain=[BUTTON_DOMAIN]
@@ -36,6 +47,8 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     """
     return {
         "title": "Advanced Robby",
+        "cancel_button_entity": data[CONF_CANCEL_BUTTON_ENTITY],
+        "continue_button_entity": data[CONF_CONTINUE_BUTTON_ENTITY],
         "mower_entity": data[CONF_MOWER_ENTITY],
         "query_schedules_button_entity": data[CONF_QUERY_SCHEDULES_BUTTON_ENTITY]
     }
