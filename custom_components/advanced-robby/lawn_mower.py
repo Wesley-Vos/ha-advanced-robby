@@ -22,11 +22,11 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the lawn mower entity."""
-    mower = RobbyLawnMowerEntity(hass, entry)
+    entities = [RobbyLawnMowerEntity(hass, entry)]
 
     await attach_entities_to_source_device(entry, entities, hass, entry.data[CONF_MOWER_ENTITY])
 
-    async_add_entities([mower])
+    async_add_entities(entities)
 
 class RobbyLawnMowerEntity(LawnMowerEntity):
     """Representation of a Robby lawn mower."""

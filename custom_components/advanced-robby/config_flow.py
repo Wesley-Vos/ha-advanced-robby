@@ -19,7 +19,7 @@ from .const import CONF_CANCEL_BUTTON_ENTITY, CONF_CONTINUE_BUTTON_ENTITY, CONF_
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_MOWER_ENTITY): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain=[LAWN_MOWER_DOMAIN, SENSOR_DOMAIN]),
+            selector.EntitySelectorConfig(domain=[LAWN_MOWER_DOMAIN]),
         ),
         vol.Required(CONF_CANCEL_BUTTON_ENTITY): selector.EntitySelector(
                 selector.EntitySelectorConfig(
