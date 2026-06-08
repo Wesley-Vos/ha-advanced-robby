@@ -12,8 +12,10 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
 
 from . import AdvancedRobbyConfigEntry
-from .const import ATTR_CHARGING, CONF_CANCEL_BUTTON_ENTITY, CONF_CONTINUE_BUTTON_ENTITY, CONF_MOWER_ENTITY, STATE_CHARGING, STATE_LOCKED, STATE_STANDBY
+from .const import ATTR_CHARGING, CONF_CANCEL_BUTTON_ENTITY, CONF_CONTINUE_BUTTON_ENTITY, CONF_MOWER_ENTITY, STATE_STANDBY
 from .device_binding import attach_entities_to_source_device
+
+import asyncio
 
 
 async def async_setup_entry(
@@ -92,13 +94,11 @@ class RobbyLawnMowerEntity(LawnMowerEntity):
         if self._state is None:
             return None
         if self._state in ("CHARGING", "CHARGING_WITH_TASK_SUSPEND"):
-            return STATE_CHARGING
+            return LawnMowerActivity.DOCKED
         if self._state == "STANDBY":
             return LawnMowerActivity.DOCKED if self._docked else STATE_STANDBY
         if self._state in ("MOWING", "FIXED_MOWING"):
             return LawnMowerActivity.MOWING
-        if self._state == "LOCKED":
-            return STATE_LOCKED
         if self._state in ("EMERGENCY", "ERROR"):
             return LawnMowerActivity.ERROR
         if self._state == "PAUSED": 
@@ -112,7 +112,9 @@ class RobbyLawnMowerEntity(LawnMowerEntity):
         """Return the state attributes of the lawn mower."""
         return {
             "raw_activity": self._state,
-            "docked": self._docked
+            "docked": self._docked,
+            "charging": self._state in ("CHARGING", "CHARGING_WITH_TASK_SUSPEND"),
+            "locked": self._state == "LOCKED"
         }
 
     async def async_start_mowing(self) -> None:
@@ -123,16 +125,26 @@ class RobbyLawnMowerEntity(LawnMowerEntity):
                 "press",
                 {"entity_id": self._continue_button_entity}
             )
-        else:
-            """Start mowing"""
+            return
+        
+        if self._state == "PARK":
             await self.hass.services.async_call(
-                "lawn_mower",
-                "start_mowing",
-                {"entity_id": self._mower_entity}
+                "button",
+                "press",
+                {"entity_id": self._cancel_button_entity}
             )
+            
+            await asyncio.sleep(2)
+            
+        """Start mowing"""
+        await self.hass.services.async_call(
+            "lawn_mower",
+            "start_mowing",
+            {"entity_id": self._mower_entity}
+        )
 
     async def async_dock(self) -> None:
-
+        
         if self._state == "MOWING":
             await self.hass.services.async_call(
                 "lawn_mower",
@@ -141,6 +153,8 @@ class RobbyLawnMowerEntity(LawnMowerEntity):
             )
 
             await asyncio.sleep(2)
+            
+        if self._state in ("MOWING", "PAUSED"):
 
             await self.hass.services.async_call(
                 "button",
@@ -150,13 +164,14 @@ class RobbyLawnMowerEntity(LawnMowerEntity):
 
             await asyncio.sleep(2)
 
-            await self.hass.services.async_call(
-                "lawn_mower",
-                "dock",
-                {"entity_id": self._mower_entity}
-            )
+        await self.hass.services.async_call(
+            "lawn_mower",
+            "dock",
+            {"entity_id": self._mower_entity}
+        )
 
     async def async_pause(self) -> None:
+
         """Pause the lawn mower."""
         await self.hass.services.async_call(
             "lawn_mower",
