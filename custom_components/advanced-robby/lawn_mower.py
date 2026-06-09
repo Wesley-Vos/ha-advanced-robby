@@ -70,7 +70,7 @@ class RobbyLawnMowerEntity(LawnMowerEntity):
 
             self._state = new_state.attributes.get("raw_activity")
 
-            if event is not None: 
+            if event is not None and event.data["old_state"] is not None: 
                 old_raw_activity = event.data["old_state"].attributes.get("raw_activity")
                 if old_raw_activity == "CHARGING" and self._state == "STANDBY":
                     self._docked = True # ready charging TODO: check what if not fully charged, then maybe standby
