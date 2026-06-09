@@ -48,6 +48,7 @@ class RobbyLawnMowerEntity(LawnMowerEntity):
         self._state = None
         self._attr_available = False
         self._docked = True
+        self._surpress_state_changes = False
 
     async def async_added_to_hass(self):
         """Register callbacks."""
@@ -57,6 +58,9 @@ class RobbyLawnMowerEntity(LawnMowerEntity):
             event: Event[EventStateChangedData] | None = None,
         ) -> None:
             """Triggered whenever mower entity updates."""
+
+            if self._surpress_state_changes:
+                return
 
             if (
                 new_state := self.hass.states.get(self._mower_entity)
@@ -114,7 +118,8 @@ class RobbyLawnMowerEntity(LawnMowerEntity):
             "raw_activity": self._state,
             "docked": self._docked,
             "charging": self._state in ("CHARGING", "CHARGING_WITH_TASK_SUSPEND"),
-            "locked": self._state == "LOCKED"
+            "locked": self._state == "LOCKED",
+            "surpress_state_changes": self._surpress_state_changes
         }
 
     async def async_start_mowing(self) -> None:
@@ -128,6 +133,7 @@ class RobbyLawnMowerEntity(LawnMowerEntity):
             return
         
         if self._state == "PARK":
+            self.disable_state_changes()
             await self.hass.services.async_call(
                 "button",
                 "press",
@@ -135,6 +141,7 @@ class RobbyLawnMowerEntity(LawnMowerEntity):
             )
             
             await asyncio.sleep(2)
+            self.enable_state_changes()
             
         """Start mowing"""
         await self.hass.services.async_call(
@@ -144,6 +151,8 @@ class RobbyLawnMowerEntity(LawnMowerEntity):
         )
 
     async def async_dock(self) -> None:
+
+        self.disable_state_changes()
         
         if self._state == "MOWING":
             await self.hass.services.async_call(
@@ -164,6 +173,8 @@ class RobbyLawnMowerEntity(LawnMowerEntity):
 
             await asyncio.sleep(2)
 
+        self.enable_state_changes()
+
         await self.hass.services.async_call(
             "lawn_mower",
             "dock",
@@ -178,3 +189,9 @@ class RobbyLawnMowerEntity(LawnMowerEntity):
             "pause",
             {"entity_id": self._mower_entity},
         )
+
+    def disable_state_changes(self) -> None:
+        self._surpress_state_changes = True
+
+    def enable_state_changes(self) -> None:
+        self._surpress_state_changes = False
